@@ -492,7 +492,7 @@ async def process_phone(message: types.Message, state: FSMContext) -> None:
                 ),
 
     try:
-        await message.bot.edit_message(
+        await message.bot.edit_message_text(
             text = waitphone_text,
             chat_id=message.chat.id,
             message_id=message.message_id - 1,
@@ -674,6 +674,7 @@ async def process_role(callback: types.CallbackQuery, state: FSMContext) -> None
 def register_registration_handlers(dp: Dispatcher):
 
     dp.include_router(router)
+
 
 
 
