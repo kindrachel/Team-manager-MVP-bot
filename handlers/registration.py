@@ -249,9 +249,8 @@ async def confirm_name_handler(callback: types.CallbackQuery, state: FSMContext)
     try:
         await callback.message.edit_media(
                 f"✅ <b>Имя: {name}</b>\n\nВыберите направление:",
-                parse_mode=ParseMode.HTML
-            ),
-            reply_markup=org_type_keyboard()
+                parse_mode=ParseMode.HTML,
+        reply_markup=org_type_keyboard()
         )
     except:
         # Если не получилось редактировать, отправляем новое
@@ -271,8 +270,7 @@ async def edit_name_handler(callback: types.CallbackQuery, state: FSMContext) ->
     try:
         await callback.edit_text(
                 "Пожалуйста, укажите ваше ФИО еще раз:",
-                parse_mode=ParseMode.HTML
-            ),
+                parse_mode=ParseMode.HTML,
             reply_markup=None  # Убираем клавиатуру
         )
     except:
@@ -339,8 +337,7 @@ async def back_to_name_confirmation(callback: types.CallbackQuery, state: FSMCon
     await callback.message.edit_text(
         f"✅ <b>Имя: {name}</b>\n\n",
         "Если все верно, нажмите кнопку ниже ⬇️",
-            parse_mode=ParseMode.HTML
-        ),
+            parse_mode=ParseMode.HTML,
         reply_markup=confirm_kb
     )
 
@@ -440,7 +437,6 @@ async def process_org_selection(callback: types.CallbackQuery, state: FSMContext
                     f"✅ Вы выбрали: {org.name}\n\n"
                            "Укажите ваш номер телефона в формате +7 (XXX) XXX-XX-XX:"
                 )
-            )
             await state.set_state(RegistrationStates.waiting_for_phone)
             
         finally:
@@ -548,8 +544,7 @@ async def confirm_phone_handler(callback: types.CallbackQuery, state: FSMContext
     try:
         await callback.message.edit_text(
                 f"✅ <b>Номер подтвержден: {phone}</b>\n\n{text}",
-                parse_mode=ParseMode.HTML
-            ),
+                parse_mode=ParseMode.HTML,
             reply_markup=kb
         )
     except TelegramBadRequest:
@@ -568,8 +563,7 @@ async def edit_phone_handler(callback: types.CallbackQuery, state: FSMContext) -
     try:
         await callback.message.edit_text(
                 "Пожалуйста, укажите ваш номер телефона еще раз:\n\nПример: +7 (912) 345-67-89",
-                parse_mode=ParseMode.HTML
-            ),
+                parse_mode=ParseMode.HTML,
             reply_markup=None 
         )
     except TelegramBadRequest:
@@ -619,8 +613,7 @@ async def process_position(callback: types.CallbackQuery, state: FSMContext) -> 
     except TelegramBadRequest:
         try:
             await callback.message.edit_text(
-                role_text
-                ),
+                role_text,
                 reply_markup=kb
             )
         except TelegramBadRequest:
@@ -682,4 +675,5 @@ async def process_role(callback: types.CallbackQuery, state: FSMContext) -> None
 def register_registration_handlers(dp: Dispatcher):
 
     dp.include_router(router)
+
 
