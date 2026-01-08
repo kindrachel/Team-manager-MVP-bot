@@ -44,9 +44,8 @@ async def profile (message: types.Message):
         profile_keyboard = profile_menu_keyboard
 
         await message.delete()
-        await message.answer_photo(
-                photo = STANDARD_PROFILE_PIC,
-                caption=profile_text,
+        await message.answer(
+                photo = profile_text,
                 reply_markup= profile_keyboard())
     
     except Exception as e:
@@ -73,9 +72,8 @@ async def show_profile_details(callback: types.CallbackQuery) -> None:
         user_photo = await get_profile_photo_for_user(user_id)
         
         await callback.message.delete()
-        await callback.message.answer_photo(
-            photo=user_photo,
-            caption=profile_text,
+        await callback.message.answer(
+            profile_text,
             parse_mode='Markdown',
             reply_markup=types.InlineKeyboardMarkup(
                 inline_keyboard=[
@@ -423,7 +421,7 @@ async def show_profile_stats(callback: types.CallbackQuery) -> None:
         )
 
         await callback.message.delete()
-        await callback.message.answer_photo(photo=stat_pic, caption= stats_text, reply_markup=back_button_to_profile())
+        await callback.message.answer( stats_text, reply_markup=back_button_to_profile())
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {e}", reply_markup=back_button_to_profile())
 
@@ -464,7 +462,7 @@ async def show_profile_awards(callback: types.CallbackQuery) -> None:
         if user.level >= 3:
             awards_text += f"✅ Достижение: {get_level_name(user.level)} 👑\n"
         await callback.message.delete()
-        await callback.message.answer_photo(photo=awards_pic, caption=awards_text, reply_markup=back_button_to_profile())
+        await callback.message.answer(awards_text, reply_markup=back_button_to_profile())
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {e}", reply_markup=back_button_to_profile())
 
@@ -522,9 +520,8 @@ async def back_to_profile_menu(call: types.CallbackQuery) -> None:
     try:
         
         await call.message.delete()
-        await call.message.answer_photo(
-            photo=STANDARD_PROFILE_PIC, 
-            caption="👤 Выбери раздел профиля:",
+        await call.message.answer(
+            "👤 Выбери раздел профиля:",
             reply_markup=profile_menu_keyboard()
         )
         
@@ -534,4 +531,5 @@ async def back_to_profile_menu(call: types.CallbackQuery) -> None:
 
 
 def register_profile_handlers(dp: Dispatcher):
+
     dp.include_router(router)
