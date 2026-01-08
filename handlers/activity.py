@@ -131,7 +131,7 @@ async def show_activity_menu(message: types.Message) -> None:
         
         kb = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
         
-        await message.answer_photo(photo=activity_pic, caption=activity_text, reply_markup=kb)
+        await message.answer(activity_text, reply_markup=kb)
         session.close()
         
     except Exception as e:
@@ -499,9 +499,8 @@ async def show_challenges(callback: types.CallbackQuery) -> None:
             challenges_text = challenges_text[:MAX_CAPTION_LENGTH - 3] + "..."
         
         await callback.message.delete()
-        await callback.message.answer_photo(
-            photo=challenge_pic, 
-            caption=challenges_text, 
+        await callback.message.answer(
+            challenges_text, 
             reply_markup=kb
         )
         
@@ -991,4 +990,5 @@ async def process_custom_challenge_text(message: types.Message, state: FSMContex
         await state.clear()
 
 def register_activity_handlers(dp: Dispatcher):
+
     dp.include_router(router)
