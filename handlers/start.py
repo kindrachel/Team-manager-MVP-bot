@@ -38,8 +38,8 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
                 reply_markup=main_menu_keyboard()
             )
         else:
-            await message.answer_photo(
-            photo = welocome_pic, caption = welocme_caption, parse_mode=ParseMode.HTML, disable_web_page_preview=True,
+            await message.answer(
+            photo =  welocme_caption, parse_mode=ParseMode.HTML, disable_web_page_preview=True,
             reply_markup= InlineKeyboardMarkup(inline_keyboard= [
                 [InlineKeyboardButton(text='Даю согласие', callback_data='acceptpolicy')]
                 ])
@@ -55,10 +55,8 @@ async def startreg(call: types.CallbackQuery, state: FSMContext) -> None:
     await call.answer(cache_time=1)
     
     try:
-        await call.message.edit_media(
-            media=InputMediaPhoto(
-                media=registartion_pic,
-                caption='Пожалуйста, укажите ваше ФИО:',
+        await call.message.edit_text(
+                'Пожалуйста, укажите ваше ФИО:',
                 parse_mode=ParseMode.HTML
             ),
         )
@@ -66,9 +64,8 @@ async def startreg(call: types.CallbackQuery, state: FSMContext) -> None:
         await state.update_data(registration_message_id=call.message.message_id)
         
     except TelegramBadRequest:
-        new_message = await call.message.answer_photo(
-            photo=registartion_pic,
-            caption='Пожалуйста, укажите ваше ФИО:',
+        new_message = await call.message.answer(
+            'Пожалуйста, укажите ваше ФИО:',
             parse_mode=ParseMode.HTML,
         )
         
@@ -152,12 +149,8 @@ async def process_name(message: types.Message, state: FSMContext) -> None:
     # Редактируем сообщение с фото для подтверждения
     if reg_message_id:
         try:
-            await message.bot.edit_message_media(
-                chat_id=message.chat.id,
-                message_id=reg_message_id,
-                media=InputMediaPhoto(
-                    media=registartion_pic, 
-                    caption=(
+            await message.bot.edit_text(
+                chat_id=message.chat.id,(
                         f"🔍 <b>Проверьте правильность ФИО:</b>\n\n"
                         f"👤 <b>{name}</b>\n\n"
                         f"Если все верно, нажмите кнопку ниже ⬇️"
@@ -177,10 +170,8 @@ async def process_name(message: types.Message, state: FSMContext) -> None:
 
 async def send_confirmation_step(bot, chat_id: int, name: str, keyboard: InlineKeyboardMarkup):
     """Отправка шага подтверждения (если не удалось редактировать)"""
-    await bot.send_photo(
-        chat_id=chat_id,
-        photo=registartion_pic,
-        caption=(
+    await bot.answer(
+        (
             f"🔍 <b>Проверьте правильность ФИО:</b>\n\n"
             f"👤 <b>{name}</b>\n\n"
             f"Если все верно, нажмите кнопку ниже ⬇️"
@@ -192,4 +183,5 @@ async def send_confirmation_step(bot, chat_id: int, name: str, keyboard: InlineK
 def register_start_handlers(dp: Dispatcher):
     """Регистрация всех обработчиков из этого файла"""
     dp.include_router(router)
+
 
