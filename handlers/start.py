@@ -59,7 +59,6 @@ async def startreg(call: types.CallbackQuery, state: FSMContext) -> None:
                 'Пожалуйста, укажите ваше ФИО:',
                 parse_mode=ParseMode.HTML
             ),
-        )
         
         await state.update_data(registration_message_id=call.message.message_id)
         
@@ -183,5 +182,6 @@ async def send_confirmation_step(bot, chat_id: int, name: str, keyboard: InlineK
 def register_start_handlers(dp: Dispatcher):
     """Регистрация всех обработчиков из этого файла"""
     dp.include_router(router)
+
 
 
