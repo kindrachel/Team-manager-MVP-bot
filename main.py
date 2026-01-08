@@ -1,11 +1,34 @@
 from middlewares.middlewares import CacheMiddleware
 from middlewares.autoregister import ensure_super_admin_exists
-from services.timezone_scheduler import TimezoneMessageScheduler
-from aiogram import Bot
+import os
 import asyncio
 import logging
 import sys
-import os
+from threading import Thread
+from flask import Flask
+from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.memory import MemoryStorage
+
+# Создаем Flask сервер для Render
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "✅ Bot is running on Render"
+
+@app.route('/health')
+def health():
+    return "OK", 200
+
+def run_flask():
+    """Запуск Flask сервера в отдельном потоке"""
+    port = int(os.getenv("PORT", 8080))
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+
+# Оригинальный код продолжается ниже...
+from middlewares.middlewares import CacheMiddleware
+from middlewares.autoregister import ensure_super_admin_exists
+from services.timezone_scheduler import TimezoneMessageScheduler
 
 TEMP_DIR = "temp_reports"
 os.makedirs(TEMP_DIR, exist_ok=True)
@@ -68,8 +91,8 @@ async def check_and_send_scheduled_challenges(bot: Bot):
     except Exception as e:
         logger.error(f"Ошибка запуска задачи проверки челленджей: {e}")
 
-async def main():
-    """Главная функция"""
+async def bot_main():
+    """Главная функция бота"""
     try:
         logger.info("🚀 Запуск бота...")
         await ensure_super_admin_exists()
@@ -85,9 +108,6 @@ async def main():
         
         logger.info("2. Инициализирую бота...")
         try:
-            from aiogram import Bot, Dispatcher
-            from aiogram.fsm.storage.memory import MemoryStorage
-            
             storage = MemoryStorage()
             bot = Bot(token=config.token) 
             dp = Dispatcher(storage=storage)
@@ -242,6 +262,16 @@ async def main():
         raise
     finally:
         logger.info("✅ Бот остановлен")
+
+async def main():
+    """Основная функция - запускает Flask сервер и бота"""
+    # Запускаем Flask в отдельном потоке
+    flask_thread = Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    logger.info(f"✅ Flask сервер запущен на порту {os.getenv('PORT', 8080)}")
+    
+    # Запускаем бота
+    await bot_main()
 
 if __name__ == '__main__':
     try:
