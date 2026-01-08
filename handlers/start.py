@@ -101,19 +101,15 @@ async def process_name(message: types.Message, state: FSMContext) -> None:
     """Обработка имени с проверкой ФИО"""
     name = message.text.strip()
     
-    # Проверяем ФИО
     is_valid, error_msg = validate_fio(name)
     if not is_valid:
-        # Отправляем ошибку и сразу её удаляем через 2 секунды
         error_msg_obj = await message.answer(error_msg)
         
-        # Удаляем сообщение пользователя и ошибку через паузу
         try:
             await message.delete()
         except:
             pass
         
-        # Удаляем сообщение об ошибке через 2 секунды
         await asyncio.sleep(2)
         try:
             await error_msg_obj.delete()
@@ -121,27 +117,22 @@ async def process_name(message: types.Message, state: FSMContext) -> None:
             pass
         
         return
-    
-    # Удаляем сообщение пользователя
+
     try:
         await message.delete()
     except:
         pass
     
-    # Сохраняем имя в состоянии
     await state.update_data(name=name)
     
-    # Получаем ID сообщения с фото
     data = await state.get_data()
     reg_message_id = data.get('registration_message_id')
     
-    # Создаем клавиатуру подтверждения
     confirm_keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ Да, все верно", callback_data="confirm_name")],
         [InlineKeyboardButton(text="❌ Нет, исправить", callback_data="edit_name")]
     ])
     
-    # Редактируем сообщение для подтверждения
     if reg_message_id:
         try:
             await message.bot.edit_message_text(
@@ -157,11 +148,10 @@ async def process_name(message: types.Message, state: FSMContext) -> None:
             )
         except Exception as e:
             print(f"Ошибка редактирования: {e}")
-            await send_confirmation_step(message.bot, message.chat.id, name, confirm_keyboard)
+            await send_confirmation_step(message.bot, message.chat.id, name, confirm_keyboard) 
     else:
         await send_confirmation_step(message.bot, message.chat.id, name, confirm_keyboard)
     
-    # Переходим в состояние ожидания подтверждения
     await state.set_state(RegistrationStates.waiting_for_name_confirmation)
 
 async def send_confirmation_step(bot, chat_id: int, name: str, keyboard: InlineKeyboardMarkup):
@@ -180,5 +170,6 @@ async def send_confirmation_step(bot, chat_id: int, name: str, keyboard: InlineK
 def register_start_handlers(dp: Dispatcher):
     """Регистрация всех обработчиков из этого файла"""
     dp.include_router(router)
+
 
 
