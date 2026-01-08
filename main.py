@@ -2,9 +2,19 @@ import os
 import asyncio
 import logging
 import sys
-from aiohttp import web  # ← вместо Flask
+import signal
+from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
+
+# Глобальные переменные
+logger = None
+http_runner = None
+
+# Обработка SIGTERM от Render
+def handle_sigterm(signum, frame):
+    logger.info(f"🛑 Received SIGTERM signal ({signum}), shutting down gracefully...")
+    sys.exit(0)
 
 # Создаем aiohttp сервер для Render
 async def handle_root(request):
@@ -15,43 +25,63 @@ async def handle_health(request):
 
 async def start_http_server():
     """Запуск HTTP сервера для Render"""
+    global http_runner
+    
     app = web.Application()
     app.router.add_get('/', handle_root)
     app.router.add_get('/health', handle_health)
     
-    port = int(os.getenv("PORT", 8080))
+    port = int(os.getenv("PORT", 10000))  # Render использует 10000
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
+    
+    http_runner = runner
     logger.info(f"✅ HTTP сервер запущен на порту {port}")
     return runner
 
-# Оригинальный код продолжается ниже...
-from middlewares.middlewares import CacheMiddleware
-from middlewares.autoregister import ensure_super_admin_exists
-from services.timezone_scheduler import TimezoneMessageScheduler
+async def stop_http_server():
+    """Остановка HTTP сервера"""
+    global http_runner
+    if http_runner:
+        await http_runner.cleanup()
+        logger.info("✅ HTTP сервер остановлен")
 
-TEMP_DIR = "temp_reports"
-os.makedirs(TEMP_DIR, exist_ok=True)
+# Инициализация логгера
+def setup_logging():
+    global logger
+    
+    if sys.platform == 'win32':
+        try:
+            os.system('chcp 65001 > nul')
+        except:
+            pass
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    logger = logging.getLogger(__name__)
+    
+    # Регистрируем обработчик SIGTERM
+    signal.signal(signal.SIGTERM, handle_sigterm)
+    
+    return logger
 
-if sys.platform == 'win32':
-    try:
-        os.system('chcp 65001 > nul')
-    except:
-        pass
-    sys.stdout.reconfigure(encoding='utf-8')
-    sys.stderr.reconfigure(encoding='utf-8')
+# Создание временных директорий
+def create_temp_dirs():
+    TEMP_DIRS = ["temp_reports", "temp_data", "logs"]
+    for dir_name in TEMP_DIRS:
+        os.makedirs(dir_name, exist_ok=True)
+        logger.info(f"✅ Создана директория: {dir_name}")
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
-
+# Фоновая задача для очистки устаревших записей
 async def cleanup_pending_challenges(bot: Bot):
     """Фоновая задача для очистки устаревших записей"""
     logger.info("Запуск задачи очистки устаревших челленджей...")
@@ -77,6 +107,7 @@ async def cleanup_pending_challenges(bot: Bot):
     except Exception as e:
         logger.error(f"Критическая ошибка задачи очистки: {e}")
 
+# Фоновая задача для проверки запланированных челленджей
 async def check_and_send_scheduled_challenges(bot: Bot):
     """Фоновая задача для проверки и отправки запланированных челленджей"""
     logger.info("Запуск задачи проверки запланированных челленджей...")
@@ -84,7 +115,6 @@ async def check_and_send_scheduled_challenges(bot: Bot):
     try:
         from services.challenge_sheduler import ChallengeScheduler
         
-        # Создаем и запускаем планировщик
         scheduler = ChallengeScheduler(bot)
         await scheduler.start()
         
@@ -93,22 +123,62 @@ async def check_and_send_scheduled_challenges(bot: Bot):
     except Exception as e:
         logger.error(f"Ошибка запуска задачи проверки челленджей: {e}")
 
+# Инициализация шрифтов для PDF
+def init_dejavu_fonts():
+    """Инициализация DejaVu шрифтов (поддерживают кириллицу)"""
+    try:
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.lib.fonts import addMapping
+        import os
+        
+        fonts_dir = os.path.join(os.path.dirname(__file__), "fonts")
+        dejavu_regular = os.path.join(fonts_dir, "DejaVuSans.ttf")
+        dejavu_bold = os.path.join(fonts_dir, "DejaVuSans-Bold.ttf")
+        
+        if os.path.exists(dejavu_regular):
+            pdfmetrics.registerFont(TTFont('DejaVuSans', dejavu_regular))
+            pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', dejavu_bold))
+            
+            addMapping('DejaVuSans', 0, 0, 'DejaVuSans')       
+            addMapping('DejaVuSans', 1, 0, 'DejaVuSans-Bold')   
+            
+            logger.info("✅ Шрифты DejaVu загружены (поддержка кириллицы)")
+            return True
+        else:
+            logger.warning("⚠️ Шрифты DejaVu не найдены. Использую Helvetica.")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ Ошибка загрузки шрифтов: {e}")
+        return False
+
+# Основная функция бота
 async def bot_main():
     """Главная функция бота"""
     try:
         logger.info("🚀 Запуск бота...")
-        await ensure_super_admin_exists()
         
-        logger.info("1. Загружаю конфигурацию...")
+        # 1. Проверяем супер-админа
+        try:
+            from middlewares.autoregister import ensure_super_admin_exists
+            await ensure_super_admin_exists()
+            logger.info("✅ Супер-админ проверен")
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка проверки супер-админа: {e}")
+        
+        # 2. Загружаем конфигурацию
+        logger.info("Загружаю конфигурацию...")
         try:
             from config import load_config
             config = load_config()
-            logger.info(f"✅ Конфигурация загружена")
+            logger.info("✅ Конфигурация загружена")
         except Exception as e:
             logger.error(f"❌ Ошибка загрузки конфигурации: {e}")
             raise
         
-        logger.info("2. Инициализирую бота...")
+        # 3. Инициализируем бота
+        logger.info("Инициализирую бота...")
         try:
             storage = MemoryStorage()
             bot = Bot(token=config.token) 
@@ -118,7 +188,8 @@ async def bot_main():
             logger.error(f"❌ Ошибка инициализации бота: {e}")
             raise
         
-        logger.info("3. Регистрирую мидлвари...")
+        # 4. Регистрируем мидлвари
+        logger.info("Регистрирую мидлвари...")
         try:
             from middlewares import (
                 ClearStateMiddleware,
@@ -126,12 +197,12 @@ async def bot_main():
                 LoggingMiddleware,
                 AntiFloodMiddleware
             )
+            from middlewares.middlewares import CacheMiddleware
             
             dp.update.middleware(LoggingMiddleware())
             dp.update.middleware(AntiFloodMiddleware(delay=0.3))
             dp.update.middleware(ClearStateMiddleware())
             dp.update.middleware(AutoRegisterUserMiddleware())
-            
             dp.update.middleware(CacheMiddleware())
             
             logger.info("✅ Мидлвари зарегистрированы")
@@ -139,7 +210,8 @@ async def bot_main():
             logger.warning(f"⚠️ Ошибка регистрации мидлварей: {e}")
             logger.info("⚠️ Продолжаю без мидлварей...")
         
-        logger.info("4. Инициализирую базу данных...")
+        # 5. Инициализируем базу данных
+        logger.info("Инициализирую базу данных...")
         try:
             from database import init_db
             init_db()
@@ -148,20 +220,20 @@ async def bot_main():
             logger.error(f"❌ Ошибка инициализации БД: {e}")
             raise
         
-        logger.info("5. Регистрирую обработчики...")
+        # 6. Регистрируем обработчики
+        logger.info("Регистрирую обработчики...")
         try:
             from handlers import register_all_handlers
             register_all_handlers(dp)
-            
-            logger.info(f"✅ Все обработчики зарегистрированы")
-            
+            logger.info("✅ Все обработчики зарегистрированы")
         except Exception as e:
             logger.error(f"❌ Ошибка регистрации обработчиков: {e}")
             import traceback
             traceback.print_exc()
             raise
         
-        logger.info("6. Запускаю планировщик...")
+        # 7. Запускаем планировщики
+        logger.info("Запускаю планировщик...")
         try:
             from services import SchedulerManager
             scheduler_manager = SchedulerManager(bot)
@@ -169,91 +241,39 @@ async def bot_main():
             logger.info("✅ Планировщик запущен")
         except Exception as e:
             logger.warning(f"⚠️ Ошибка запуска планировщика: {e}")
-            logger.info("⚠️ Продолжаю без планировщика...")
         
-        logger.info("7. Запускаю планировщик сообщений...")
+        # 8. Запускаем планировщик сообщений
+        logger.info("Запускаю планировщик сообщений...")
         try:
+            from services.timezone_scheduler import TimezoneMessageScheduler
             message_scheduler = TimezoneMessageScheduler(bot)
             asyncio.create_task(message_scheduler.start())
             logger.info("✅ Планировщик сообщений запущен")
-            
         except Exception as e:
-            logger.error(f"❌ Ошибка запуска планировщика сообщений: {e}")
-            logger.info("⚠️ Продолжаю без планировщика сообщений...")
-
-        logger.info("8. Запускаю планировщик челленджей...")
-        try:
-            # Здесь запускаем обновленную версию
-            asyncio.create_task(check_and_send_scheduled_challenges(bot))
-            logger.info("✅ Планировщик челленджей запущен")
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка запуска планировщика челленджей: {e}")
-            logger.info("⚠️ Продолжаю без планировщика челленджей...")
-
-        logger.info("9. Запускаю очистку устаревших данных...")
-        try:
-            asyncio.create_task(cleanup_pending_challenges(bot))
-            logger.info("✅ Очистка устаревших данных запущена")
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка запуска очистки: {e}")
+            logger.warning(f"⚠️ Ошибка запуска планировщика сообщений: {e}")
         
-        logger.info("10. Инициализирую шрифты для PDF отчетов...")
-        try:
-            def init_dejavu_fonts():
-                """Инициализация DejaVu шрифтов (поддерживают кириллицу)"""
-                try:
-                    from reportlab.pdfbase import pdfmetrics
-                    from reportlab.pdfbase.ttfonts import TTFont
-                    from reportlab.lib.fonts import addMapping
-                    import os
-                    
-                    fonts_dir = os.path.join(os.path.dirname(__file__), "fonts")
-                    dejavu_regular = os.path.join(fonts_dir, "DejaVuSans.ttf")
-                    dejavu_bold = os.path.join(fonts_dir, "DejaVuSans-Bold.ttf")
-                    
-                    if os.path.exists(dejavu_regular):
-                        pdfmetrics.registerFont(TTFont('DejaVuSans', dejavu_regular))
-                        pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', dejavu_bold))
-                        
-                        addMapping('DejaVuSans', 0, 0, 'DejaVuSans')       
-                        addMapping('DejaVuSans', 1, 0, 'DejaVuSans-Bold')   
-                        
-                        logger.info("✅ Шрифты DejaVu загружены (поддержка кириллицы)")
-                        return True
-                    else:
-                        logger.warning("⚠️ Шрифты DejaVu не найдены. Использую Helvetica.")
-                        return False
-                        
-                except Exception as e:
-                    logger.error(f"❌ Ошибка загрузки шрифтов: {e}")
-                    return False
-            
-            fonts_loaded = init_dejavu_fonts()
-            
-            if fonts_loaded:
+        # 9. Запускаем планировщик челленджей
+        logger.info("Запускаю планировщик челленджей...")
+        asyncio.create_task(check_and_send_scheduled_challenges(bot))
+        logger.info("✅ Планировщик челленджей запущен")
+        
+        # 10. Запускаем очистку устаревших данных
+        logger.info("Запускаю очистку устаревших данных...")
+        asyncio.create_task(cleanup_pending_challenges(bot))
+        logger.info("✅ Очистка устаревших данных запущена")
+        
+        # 11. Инициализируем шрифты для PDF
+        logger.info("Инициализирую шрифты для PDF отчетов...")
+        fonts_loaded = init_dejavu_fonts()
+        if fonts_loaded:
+            try:
                 from services.report_formatter import set_fallback_font
                 set_fallback_font('DejaVuSans')
                 logger.info("✅ Шрифт DejaVuSans установлен для PDF отчетов")
-            
-        except Exception as e:
-            logger.error(f"❌ Ошибка инициализации шрифтов: {e}")
-
-        logger.info("11. Проверяю доступные шрифты...")
-        try:
-            from reportlab.pdfbase import pdfmetrics
-            from reportlab.pdfbase.ttfonts import TTFont
-            
-            registered_fonts = pdfmetrics.getRegisteredFontNames()
-            logger.info(f"📝 Зарегистрированные шрифты: {registered_fonts}")
-            
-            if 'DejaVuSans' in registered_fonts:
-                logger.info("✅ DejaVuSans доступен")
-            else:
-                logger.warning("⚠️ DejaVuSans НЕ зарегистрирован!")
-                
-        except Exception as e:
-            logger.error(f"❌ Ошибка проверки шрифтов: {e}")
+            except Exception as e:
+                logger.warning(f"⚠️ Не удалось установить шрифт: {e}")
         
+        # 12. Запускаем бота
         logger.info("🎉 Все системы готовы! Запускаю опрос сообщений...")
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
         
@@ -262,27 +282,37 @@ async def bot_main():
         import traceback
         traceback.print_exc()
         raise
-    finally:
-        logger.info("✅ Бот остановлен")
 
+# Основная функция
 async def main():
-    """Основная функция - запускает HTTP сервер и бота"""
-    # Запускаем HTTP сервер
-    runner = await start_http_server()
-    
-    # Запускаем бота
+    """Основная функция - запускает всё"""
     try:
+        # Настройка логирования
+        setup_logging()
+        
+        # Создание временных директорий
+        create_temp_dirs()
+        
+        # Запуск HTTP сервера
+        await start_http_server()
+        
+        # Запуск бота
         await bot_main()
-    finally:
-        # Останавливаем HTTP сервер при завершении
-        await runner.cleanup()
-
-if __name__ == '__main__':
-    try:
-        asyncio.run(main())
+        
+    except SystemExit:
+        # Корректный выход по SIGTERM
+        logger.info("✅ Завершение работы по сигналу")
     except KeyboardInterrupt:
         logger.info("⚠️ Бот остановлен пользователем")
     except Exception as e:
         logger.error(f"❌ Непредвиденная ошибка: {e}")
         import traceback
         traceback.print_exc()
+    finally:
+        # Останавливаем HTTP сервер
+        await stop_http_server()
+        logger.info("✅ Бот полностью остановлен")
+
+if __name__ == '__main__':
+    # Запуск асинхронного приложения
+    asyncio.run(main())
