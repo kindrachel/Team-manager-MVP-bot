@@ -1,0 +1,50 @@
+{
+  "vacancies": [
+    {
+      "title": "Руководитель отдела продаж",
+      "company": "ПроффПеревозки",
+      "type": "Удаленно",
+      "description": "Высокий доход, развитие в дружной команде + бесплатный доступ к коучам! Перспектива роста до Исполнительного директора!",
+      "contact": "@proffmanagers",
+      "details_url": "https://telegra.ph/Rukovoditel-otdela-prodazh-01-12",
+      "id": 1
+    },
+    {
+      "title": "Блогер / Обзор футбольной обуви",
+      "company": "Футбольный блог",
+      "type": "Очно-Заочно / Удаленно",
+      "description": "Любишь футбол и знаешь всё о бутсах? Стань лицом нашего YouTube-канала с 8+ тыс. подписчиков и создавай классный контент! Поможем и поддержим в первых шагах!",
+      "contact": "@proffmanagers",
+      "details_url": "https://telegra.ph/Bloger-01-21",
+      "id": 2
+    },
+    {
+      "title": "Менеджер по развитию",
+      "company": "ПроффЛойд",
+      "type": "Удаленно/Офис",
+      "description": "Ищем активного менеджера для развития новых проектов",
+      "contact": "@proffmanagers",
+      "details_url": "",
+      "id": 3
+    },
+    {
+      "title": "Frontend разработчик",
+      "company": "IT-компания",
+      "type": "Удаленно",
+      "description": "Разработка веб-интерфейсов на React/Vue",
+      "contact": "@proffmanagers",
+      "details_url": "",
+      "id": 4
+    },
+    {
+      "id": 5,
+      "title": "Python разработчик",
+      "company": "Яндекс",
+      "type": "Офис/удаленно",
+      "description": "Набираем команду для разработки MVP сервиса, набираем python junior разработчиков",
+      "contact": "@proffloud",
+      "created_at": "2026-01-02T16:32:42.076752",
+      "created_by": 5873144449
+    }
+  ]
+}

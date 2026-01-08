@@ -1,0 +1,12 @@
+aiogram
+apscheduler>=3.10.0
+sqlalchemy
+psycopg2-binary
+python-dotenv
+environs
+openai==1.12.0  
+pandas==2.0.0  
+matplotlib
+pydantic_settings
+yarz
+reportlab
