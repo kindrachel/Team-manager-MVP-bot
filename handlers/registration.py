@@ -185,10 +185,8 @@ async def _save_user_to_db(callback, state: FSMContext, data=None):
         success_text += f"{'🎖️ Вы суперадмин! Доступна админ-панель.' if user_id in config.admin_ids else '🎊 Добро пожаловать!'}\n"
         success_text += "Ваш путь к мастерству начинается! 💪"
         
-        await callback.message.edit_media(
-            media=InputMediaPhoto(
-                media=sucсefulreg_pic, 
-                caption=success_text
+        await callback.message.edit_text(
+            success_text
             )
         )
         
@@ -251,18 +249,15 @@ async def confirm_name_handler(callback: types.CallbackQuery, state: FSMContext)
     # Редактируем сообщение с подтверждением
     try:
         await callback.message.edit_media(
-            media=InputMediaPhoto(
-                media=registartion_pic,
-                caption=f"✅ <b>Имя: {name}</b>\n\nВыберите направление:",
+                f"✅ <b>Имя: {name}</b>\n\nВыберите направление:",
                 parse_mode=ParseMode.HTML
             ),
             reply_markup=org_type_keyboard()
         )
     except:
         # Если не получилось редактировать, отправляем новое
-        await callback.message.answer_photo(
-            photo=registartion_pic,
-            caption=f"✅ <b>Имя: {name}</b>\n\nВыберите направление:",
+        await callback.message.answer(
+            f"✅ <b>Имя: {name}</b>\n\nВыберите направление:",
             parse_mode=ParseMode.HTML,
             reply_markup=org_type_keyboard()
         )
@@ -275,18 +270,15 @@ async def confirm_name_handler(callback: types.CallbackQuery, state: FSMContext)
 async def edit_name_handler(callback: types.CallbackQuery, state: FSMContext) -> None:
     """Исправление ФИО"""
     try:
-        await callback.message.edit_media(
-            media=InputMediaPhoto(
-                media=registartion_pic,
-                caption="Пожалуйста, укажите ваше ФИО еще раз:",
+        await callback.edit_text(
+                "Пожалуйста, укажите ваше ФИО еще раз:",
                 parse_mode=ParseMode.HTML
             ),
             reply_markup=None  # Убираем клавиатуру
         )
     except:
-        await callback.message.answer_photo(
-            photo=registartion_pic,
-            caption="Пожалуйста, укажите ваше ФИО еще раз:",
+        await callback.message.answer(
+            "Пожалуйста, укажите ваше ФИО еще раз:",
             parse_mode=ParseMode.HTML
         )
     
@@ -296,9 +288,8 @@ async def edit_name_handler(callback: types.CallbackQuery, state: FSMContext) ->
 
 async def send_new_registration_step(message: types.Message, state: FSMContext, name: str):
     """Отправить новый шаг регистрации"""
-    new_msg = await message.answer_photo(
-        photo=registartion_pic,
-        caption=f"✅ <b>Имя: {name}</b>\n\nВыберите направление:",
+    new_msg = await message.answer(
+        f"✅ <b>Имя: {name}</b>\n\nВыберите направление:",
         parse_mode=ParseMode.HTML,
         reply_markup=org_type_keyboard()
     )
@@ -346,11 +337,9 @@ async def back_to_name_confirmation(callback: types.CallbackQuery, state: FSMCon
         ]
     ])
     
-    await callback.message.edit_media(
-        media=InputMediaPhoto(
-            media=registartion_pic,
-            caption=f"✅ <b>Имя: {name}</b>\n\n"
-                   "Если все верно, нажмите кнопку ниже ⬇️",
+    await callback.message.edit_text(
+        f"✅ <b>Имя: {name}</b>\n\n",
+        "Если все верно, нажмите кнопку ниже ⬇️",
             parse_mode=ParseMode.HTML
         ),
         reply_markup=confirm_kb
@@ -448,10 +437,8 @@ async def process_org_selection(callback: types.CallbackQuery, state: FSMContext
             )
             
             # Переходим к вводу телефона
-            await callback.message.edit_media(
-                media=InputMediaPhoto(
-                    media=registartion_pic,
-                    caption=f"✅ Вы выбрали: {org.name}\n\n"
+            await callback.message.edit_text(
+                    f"✅ Вы выбрали: {org.name}\n\n"
                            "Укажите ваш номер телефона в формате +7 (XXX) XXX-XX-XX:"
                 )
             )
@@ -466,7 +453,6 @@ async def process_org_selection(callback: types.CallbackQuery, state: FSMContext
         logger.error(f"Ошибка выбора организации: {e}")
         await callback.answer("❌ Ошибка выбора организации", show_alert=True)
 
-from aiogram.types import InputMediaPhoto
 from aiogram.exceptions import TelegramBadRequest
 
 
@@ -528,9 +514,7 @@ async def process_phone(message: types.Message, state: FSMContext) -> None:
         except:
             pass
         
-        await message.answer_photo(
-            photo=registartion_pic,
-            caption=(
+        await message.answer((
                 f"🔍 <b>Проверьте правильность номера:</b>\n\n"
                 f"👤 <b>{name}</b>\n"
                 f"📱 <b>{result}</b>\n\n"
@@ -563,18 +547,15 @@ async def confirm_phone_handler(callback: types.CallbackQuery, state: FSMContext
     text = "Укажите свое амплуа:"
 
     try:
-        await callback.message.edit_media(
-            media=InputMediaPhoto(
-                media=registartion_pic,
-                caption=f"✅ <b>Номер подтвержден: {phone}</b>\n\n{text}",
+        await callback.message.edit_text(
+                f"✅ <b>Номер подтвержден: {phone}</b>\n\n{text}",
                 parse_mode=ParseMode.HTML
             ),
             reply_markup=kb
         )
     except TelegramBadRequest:
-        await callback.message.answer_photo(
-            photo=registartion_pic,
-            caption=f"✅ <b>Номер подтвержден: {phone}</b>\n\n{text}",
+        await callback.message.answer(
+            f"✅ <b>Номер подтвержден: {phone}</b>\n\n{text}",
             parse_mode=ParseMode.HTML,
             reply_markup=kb
         )
@@ -586,18 +567,15 @@ async def confirm_phone_handler(callback: types.CallbackQuery, state: FSMContext
 async def edit_phone_handler(callback: types.CallbackQuery, state: FSMContext) -> None:
     """Исправление номера телефона"""
     try:
-        await callback.message.edit_media(
-            media=InputMediaPhoto(
-                media=registartion_pic,
-                caption="Пожалуйста, укажите ваш номер телефона еще раз:\n\nПример: +7 (912) 345-67-89",
+        await callback.message.edit_text(
+                "Пожалуйста, укажите ваш номер телефона еще раз:\n\nПример: +7 (912) 345-67-89",
                 parse_mode=ParseMode.HTML
             ),
             reply_markup=None 
         )
     except TelegramBadRequest:
-        await callback.message.answer_photo(
-            photo=registartion_pic,
-            caption="Пожалуйста, укажите ваш номер телефона еще раз:\n\nПример: +7 (912) 345-67-89",
+        await callback.message.answer(
+            "Пожалуйста, укажите ваш номер телефона еще раз:\n\nПример: +7 (912) 345-67-89",
             parse_mode=ParseMode.HTML
         )
     
@@ -641,10 +619,8 @@ async def process_position(callback: types.CallbackQuery, state: FSMContext) -> 
         )
     except TelegramBadRequest:
         try:
-            await callback.message.edit_media(
-                media=InputMediaPhoto(
-                    media=registartion_pic,
-                    caption=role_text
+            await callback.message.edit_text(
+                role_text
                 ),
                 reply_markup=kb
             )
@@ -705,4 +681,5 @@ async def process_role(callback: types.CallbackQuery, state: FSMContext) -> None
     await _save_user_to_db(callback, state, data)
 
 def register_registration_handlers(dp: Dispatcher):
+
     dp.include_router(router)
