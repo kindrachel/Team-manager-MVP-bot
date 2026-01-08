@@ -188,7 +188,6 @@ async def _save_user_to_db(callback, state: FSMContext, data=None):
         await callback.message.edit_text(
             success_text
             )
-        )
         
         # Показываем соответствующее меню
         if user_id in config.admin_ids:
@@ -683,3 +682,4 @@ async def process_role(callback: types.CallbackQuery, state: FSMContext) -> None
 def register_registration_handlers(dp: Dispatcher):
 
     dp.include_router(router)
+
