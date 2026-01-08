@@ -35,7 +35,7 @@ async def show_vacancies_intro(message: types.Message) -> None:
         )
         
         from keyboards import vacancies_menu_keyboard
-        await message.answer(=intro_text, reply_markup=vacancies_menu_keyboard())
+        await message.answer(intro_text, reply_markup=vacancies_menu_keyboard())
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}")
 
@@ -213,3 +213,4 @@ async def no_action(callback: types.CallbackQuery) -> None:
 def register_vacancies_handlers(dp: Dispatcher):
 
     dp.include_router(router)
+
