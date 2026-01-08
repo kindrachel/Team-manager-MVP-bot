@@ -45,7 +45,7 @@ async def profile (message: types.Message):
 
         await message.delete()
         await message.answer(
-                photo = profile_text,
+                profile_text,
                 reply_markup= profile_keyboard())
     
     except Exception as e:
@@ -533,3 +533,4 @@ async def back_to_profile_menu(call: types.CallbackQuery) -> None:
 def register_profile_handlers(dp: Dispatcher):
 
     dp.include_router(router)
+
