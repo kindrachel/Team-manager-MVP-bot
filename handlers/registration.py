@@ -484,18 +484,19 @@ async def process_phone(message: types.Message, state: FSMContext) -> None:
         ]
     ])
     
-    try:
-        await message.bot.edit_message(
-            chat_id=message.chat.id,
-            message_id=message.message_id - 1,
-            (
+    waitphone_text =             (
                     f"🔍 <b>Проверьте правильность номера:</b>\n\n"
                     f"👤 <b>{name}</b>\n"
                     f"📱 <b>{result}</b>\n\n"
                     f"Если все верно, нажмите кнопку ниже ⬇️"
                 ),
-                parse_mode=ParseMode.HTML
-            ),
+
+    try:
+        await message.bot.edit_message(
+            waitphone_text,
+            chat_id=message.chat.id,
+            message_id=message.message_id - 1,
+            parse_mode=ParseMode.HTML,
             reply_markup=confirm_keyboard
         )
     except (TelegramBadRequest, ValueError):
@@ -673,6 +674,9 @@ async def process_role(callback: types.CallbackQuery, state: FSMContext) -> None
 def register_registration_handlers(dp: Dispatcher):
 
     dp.include_router(router)
+
+
+
 
 
 
