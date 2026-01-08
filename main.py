@@ -1,29 +1,31 @@
-from middlewares.middlewares import CacheMiddleware
-from middlewares.autoregister import ensure_super_admin_exists
 import os
 import asyncio
 import logging
 import sys
-from threading import Thread
-from flask import Flask
+from aiohttp import web  # ← вместо Flask
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
-# Создаем Flask сервер для Render
-app = Flask(__name__)
+# Создаем aiohttp сервер для Render
+async def handle_root(request):
+    return web.Response(text="✅ Bot is running on Render")
 
-@app.route('/')
-def home():
-    return "✅ Bot is running on Render"
+async def handle_health(request):
+    return web.Response(text="OK")
 
-@app.route('/health')
-def health():
-    return "OK", 200
-
-def run_flask():
-    """Запуск Flask сервера в отдельном потоке"""
+async def start_http_server():
+    """Запуск HTTP сервера для Render"""
+    app = web.Application()
+    app.router.add_get('/', handle_root)
+    app.router.add_get('/health', handle_health)
+    
     port = int(os.getenv("PORT", 8080))
-    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    logger.info(f"✅ HTTP сервер запущен на порту {port}")
+    return runner
 
 # Оригинальный код продолжается ниже...
 from middlewares.middlewares import CacheMiddleware
@@ -264,14 +266,16 @@ async def bot_main():
         logger.info("✅ Бот остановлен")
 
 async def main():
-    """Основная функция - запускает Flask сервер и бота"""
-    # Запускаем Flask в отдельном потоке
-    flask_thread = Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-    logger.info(f"✅ Flask сервер запущен на порту {os.getenv('PORT', 8080)}")
+    """Основная функция - запускает HTTP сервер и бота"""
+    # Запускаем HTTP сервер
+    runner = await start_http_server()
     
     # Запускаем бота
-    await bot_main()
+    try:
+        await bot_main()
+    finally:
+        # Останавливаем HTTP сервер при завершении
+        await runner.cleanup()
 
 if __name__ == '__main__':
     try:
