@@ -4,20 +4,16 @@ from aiogram.fsm.context import FSMContext
 from database import User, get_session
 from keyboards import main_menu_keyboard
 from utils.states import RegistrationStates
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile, InputMediaPhoto
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest
 import asyncio
-
-
-welocome_pic = FSInputFile ('pictures/welcome.png')
-registartion_pic = FSInputFile('pictures/register.png')
 
 router = Router()
 
 @router.message(CommandStart())
 async def cmd_start(message: types.Message, state: FSMContext) -> None:
-    welocme_caption = (
+    welcome_caption = (
         f'🚀 <b>Добро пожаловать в vadirss.ru!</b> 🚀\n\n'
         f'Первым делом небольшой, но важный пункт:\n\n'
         f'Нажимая кнопку согласия, Вы подтверждаете'
@@ -38,12 +34,14 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
                 reply_markup=main_menu_keyboard()
             )
         else:
+            # УБРАЛ ОТПРАВКУ ФОТО - только текст
             await message.answer(
-            photo =  welocme_caption, parse_mode=ParseMode.HTML, disable_web_page_preview=True,
-            reply_markup= InlineKeyboardMarkup(inline_keyboard= [
-                [InlineKeyboardButton(text='Даю согласие', callback_data='acceptpolicy')]
+                text=welcome_caption, 
+                parse_mode=ParseMode.HTML, 
+                disable_web_page_preview=True,
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text='Даю согласие', callback_data='acceptpolicy')]
                 ])
-                
             )
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}")
@@ -56,9 +54,9 @@ async def startreg(call: types.CallbackQuery, state: FSMContext) -> None:
     
     try:
         await call.message.edit_text(
-                'Пожалуйста, укажите ваше ФИО:',
-                parse_mode=ParseMode.HTML
-            ),
+            'Пожалуйста, укажите ваше ФИО:',
+            parse_mode=ParseMode.HTML
+        )
         
         await state.update_data(registration_message_id=call.message.message_id)
         
@@ -71,8 +69,6 @@ async def startreg(call: types.CallbackQuery, state: FSMContext) -> None:
         await state.update_data(registration_message_id=new_message.message_id)
     
     await state.set_state(RegistrationStates.waiting_for_name)
-
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 def validate_fio(fio: str) -> tuple[bool, str]:
     """Проверка ФИО, возвращает (is_valid, error_message)"""
@@ -145,17 +141,18 @@ async def process_name(message: types.Message, state: FSMContext) -> None:
         [InlineKeyboardButton(text="❌ Нет, исправить", callback_data="edit_name")]
     ])
     
-    # Редактируем сообщение с фото для подтверждения
+    # Редактируем сообщение для подтверждения
     if reg_message_id:
         try:
-            await message.bot.edit_text(
-                chat_id=message.chat.id,(
-                        f"🔍 <b>Проверьте правильность ФИО:</b>\n\n"
-                        f"👤 <b>{name}</b>\n\n"
-                        f"Если все верно, нажмите кнопку ниже ⬇️"
-                    ),
-                    parse_mode=ParseMode.HTML
+            await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=reg_message_id,
+                text=(
+                    f"🔍 <b>Проверьте правильность ФИО:</b>\n\n"
+                    f"👤 <b>{name}</b>\n\n"
+                    f"Если все верно, нажмите кнопку ниже ⬇️"
                 ),
+                parse_mode=ParseMode.HTML,
                 reply_markup=confirm_keyboard
             )
         except Exception as e:
@@ -169,8 +166,9 @@ async def process_name(message: types.Message, state: FSMContext) -> None:
 
 async def send_confirmation_step(bot, chat_id: int, name: str, keyboard: InlineKeyboardMarkup):
     """Отправка шага подтверждения (если не удалось редактировать)"""
-    await bot.answer(
-        (
+    await bot.send_message(
+        chat_id=chat_id,
+        text=(
             f"🔍 <b>Проверьте правильность ФИО:</b>\n\n"
             f"👤 <b>{name}</b>\n\n"
             f"Если все верно, нажмите кнопку ниже ⬇️"
@@ -182,6 +180,5 @@ async def send_confirmation_step(bot, chat_id: int, name: str, keyboard: InlineK
 def register_start_handlers(dp: Dispatcher):
     """Регистрация всех обработчиков из этого файла"""
     dp.include_router(router)
-
 
 
