@@ -12,9 +12,8 @@ async def go_back(callback: types.CallbackQuery) -> None:
     """Вернуться в главное меню"""
     try:
         await callback.message.delete()
-        await callback.message.answer_photo(
-            photo = mm_pic,
-            caption = "👋 Главное меню",
+        await callback.message.answer_(
+            "👋 Главное меню",
             reply_markup=main_menu_keyboard()
         )
         await callback.answer()
@@ -44,9 +43,10 @@ async def show_help(message: types.Message) -> None:
         "Вопросы? Пишите нам! @proffmanagers 💬"
     )
     
-    await message.answer_photo(photo=help_pic, caption=help_text, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+    await message.answer(help_text, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
             [types.InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_menu")]
         ]))
 
 def register_common_handlers(dp: Dispatcher):
+
     dp.include_router(router)
